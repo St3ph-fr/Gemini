@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <!-- Import Map for Google Gen AI SDK -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@google/genai": "https://esm.run/@google/genai"
+        }
+    }
+    </script>
+    <!-- Configuration MathJax -->
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Load MathJax -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- Include Locales -->
+    <?!= include('Locales'); ?>
+
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --secondary: #818CF8;
+            --bg: #F3F4F6;
+            --surface: #FFFFFF;
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
+            --radius: 16px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            height: 100vh;
+            display: flex;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Left Panel - Settings & Input */
+        .left-panel {
+            width: 350px;
+            background: var(--surface);
+            padding: 24px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+            transition: transform 0.3s ease;
+        }
+
+         /* Right Panel - Chat & Results */
+        .right-panel {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column; /* Standard column, we will prepend in JS */
+            gap: 24px;
+            position: relative;
+        }
+
+        /* Wrapper for a Question + Answer pair */
+        .conversation-block {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #E5E7EB;
+            animation: slideIn 0.4s ease;
+        }
+
+        .continue-btn {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+        .continue-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+        .continue-btn:disabled {
+            border-color: #ccc;
+            color: #ccc;
+            cursor: default;
+            background: transparent;
+        }
+
+        /* Components */
+        h1 { font-size: 1.5rem; color: var(--primary); margin: 0 0 10px 0; }
+        h2 { font-size: 1rem; color: var(--text-muted); margin: 0; font-weight: 600; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; display: block;}
+
+        .card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Inputs */
+        select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        
+        select:focus, textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .file-upload {
+            border: 2px dashed #E5E7EB;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .file-upload:hover { border-color: var(--primary); background: #EEF2FF; }
+        .file-upload input { display: none; }
+        .file-preview { max-height: 100px; max-width: 100%; margin-top: 10px; border-radius: 8px; display: none;}
+
+        button.submit-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        button.submit-btn:hover { background: #4338CA; }
+        button.submit-btn:disabled { background: #9CA3AF; cursor: not-allowed; }
+
+        /* Chat Items */
+        .user-request {
+            align-self: flex-start;
+            border-left: 4px solid var(--primary);
+            animation: slideIn 0.3s ease;
+        }
+
+        .image-result-container {
+            width: 100%;
+            min-height: 300px;
+            background: #E0E7FF;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .generated-image {
+            width: 100%;
+            height: auto;
+            display: none;
+            object-fit: cover;
+            animation: fadeIn 1s ease;
+        }
+
+        .explanation-container {
+            line-height: 1.6;
+        }
+
+        .tts-btn {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .tts-btn:hover { background: #EEF2FF; }
+
+        /* Loaders */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        .skeleton-text {
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; overflow-y: auto; }
+            .left-panel { width: 100%; padding: 15px; box-sizing: border-box; height: auto; flex-shrink: 0; }
+            .right-panel { overflow: visible; height: auto; }
+            body { overflow: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Left Panel: Settings & Input -->
+    <div class="left-panel">
+        <!-- Header & Language Selector -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span class="material-icons-round" style="color:var(--primary); font-size:32px;">school</span>
+                <h1 id="app-title" style="margin:0; font-size:1.2rem;">Student Helper</h1>
+            </div>
+            <select id="langSelect" onchange="changeAppLanguage(this.value)" style="width:auto; padding:5px;">
+                <option value="en">🇬🇧 EN</option>
+                <option value="fr">🇫🇷 FR</option>
+                <option value="es">🇪🇸 ES</option>
+                <option value="pt">🇵🇹 PT</option>
+                <option value="it">🇮🇹 IT</option>
+                <option value="de">🇩🇪 DE</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-age" for="studentAge">Student Age (6-20)</label>
+            <select id="studentAge" onchange="handleAgeChange(this.value)">
+                <!-- filled by JS -->
+            </select>
+        </div>
+
+        <div style="flex:1; display: flex; flex-direction: column; gap:10px;">
+            <label id="lbl-ask">Ask for Help</label>
+            <textarea id="userText" rows="4"></textarea>
+            
+            <!-- CAMERA / FILE INPUT UPDATE -->
+            <!-- accept="image/*" automatically offers Camera + Gallery on Mobile -->
+            <div class="file-upload" onclick="document.getElementById('fileInput').click()">
+                <span class="material-icons-round">add_a_photo</span>
+                <p id="txt-photo" style="margin:5px 0 0; font-size:0.8rem; color:var(--text-muted)">Add Photo</p>
+                <!-- Added capture attribute is optional, but accept="image/*" is key for mobile -->
+                <input type="file" id="fileInput" accept="image/*;camera" >
+                <img id="imagePreview" class="file-preview">
+            </div>
+        </div>
+        <button id="luckyBtn" class="submit-btn" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); margin-bottom: 10px;" onclick="luckyLearn()">
+            <span id="txt-lucky">Lucky Learn 🍀</span>
+        </button>
+        <div style="display:flex; gap:10px;">
+            <button id="resetBtn" class="submit-btn" style="background:#EF4444; width:30%;" onclick="resetForm()">
+                <span class="material-icons-round">refresh</span>
+            </button>
+            <button id="submitBtn" class="submit-btn" onclick="processRequest()">
+                <span class="material-icons-round">send</span> <span id="txt-submit">Ask Teacher</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Right Panel: Output -->
+    <div class="right-panel" id="chatContainer">
+        
+        <!-- Welcome Message -->
+        <div id="welcomeState" style="text-align: center; margin-top: 100px; opacity: 0.7;">
+            <span class="material-icons-round" style="font-size: 64px; color: #cbd5e1;">auto_awesome</span>
+            <h2>Select your age and ask a question to start learning!</h2>
+        </div>
+
+        <!-- Dynamic Content will be injected here -->
+
+    </div>
+</div>
+
+<script type="module">
+    import { GoogleGenAI } from "@google/genai";
+
+    let ai;
+    let selectedImageBase64 = null;
+    let selectedMimeType = null;
+    
+    // Initialize
+    window.onload = () => {
+        // Try to detect browser language
+        const browserLang = navigator.language.split('-')[0];
+        if(TRANSLATIONS[browserLang]) {
+            document.getElementById('langSelect').value = browserLang;
+            changeAppLanguage(browserLang);
+        } else {
+            changeAppLanguage('en');
+        }
+    };
+    // Initialize Dropdown
+    const savedAgeFromServer = Number(<?= savedAge ?>); 
+
+    const ageSelect = document.getElementById('studentAge');
+    for(let i=6; i<=20; i++) {
+        let opt = document.createElement('option');
+        opt.value = i;
+        opt.innerText = i + " years old";
+        
+        if(i === savedAgeFromServer) {
+            opt.selected = true;
+        }
+        
+        ageSelect.appendChild(opt);
+    }
+
+    // Image Preview Logic
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('imagePreview');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                
+                // Extract base64 data (remove data:image/xxx;base64,)
+                selectedImageBase64 = e.target.result.split(',')[1];
+                selectedMimeType = file.type;
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Make functions globally available for onclick
+    window.processRequest = processRequest;
+    window.speakText = speakText;
+    window.resetForm = resetForm;
+    window.continueTopic = continueTopic;
+    window.luckyLearn = luckyLearn;
+
+     window.handleAgeChange = function(newAge) {
+        google.script.run
+            .withFailureHandler(err => console.log("Erreur save:", err))
+            .saveUserAge(newAge);
+    };
+
+    async function luckyLearn() {
+        const luckyBtn = document.getElementById('luckyBtn');
+        const age = document.getElementById('studentAge').value;
+        const originalText = document.getElementById('txt-lucky').innerText;
+
+        // UI Loading State
+        luckyBtn.disabled = true;
+        luckyBtn.innerHTML = '<div class="loader" style="width:16px; height:16px; border-width:2px; border-color:white white transparent transparent;"></div>';
+
+        try {
+            if (!ai) await initAI();
+
+            // 1. Get Random Topic from Backend
+            const topicData = await new Promise((resolve, reject) => {
+                google.script.run
+                    .withSuccessHandler(resolve)
+                    .withFailureHandler(reject)
+                    .getRandomTopic();
+            });
+
+            console.log("Lucky Topic:", topicData);
+
+            // 2. Ask Gemini to generate 5 questions
+            const langNames = {
+                en: "English", fr: "French", es: "Spanish", 
+                pt: "Portuguese", it: "Italian", de: "German" 
+            };
+            const targetLang = langNames[currentLang] || "English";
+
+            // Could be mixed of Subject and Topic: ${topicData.topic} (Subject: ${topicData.subject}).
+            const prompt = `SYSTEM: You are an expert teacher.
+            Main Subject : ${topicData.subject}
+            Topic : ${topicData.topic}
+            Customize questions with this Bloom Taxonomy (Levels) : ${getRandomBloomsLevel()}
+            Student Age: ${age}.
+            Language: ${targetLang}.
+            
+            TASK: Generate 5 intriguing questions a student might ask to learn about this topic.
+            RETURN STRICT JSON format: { "questions": ["Question 1", "Question 2", ...] }`;
+
+            const response = await ai.models.generateContent({
+                model: "gemini-3-pro-preview",
+                contents: { parts: [{ text: prompt }] },
+                config: { 
+                    thinkingConfig: { thinkingLevel: "low" },
+                    responseMimeType: "application/json"
+                }
+            });
+
+            // 3. Parse and Pick Random
+            const json = JSON.parse(response.text);
+            const questions = json.questions;
+            console.log(questions)
+            
+            if (questions && questions.length > 0) {
+                const randomQ = questions[Math.floor(Math.random() * questions.length)];
+                
+                document.getElementById('userText').value = randomQ;
+                
+                luckyBtn.disabled = false;
+                luckyBtn.innerHTML = '<span id="txt-lucky">' + originalText + '</span>';
+                
+                // TRUE indicates Lucky/Exploratory Mode
+                processRequest(true); 
+            } else {
+                throw new Error("No questions generated");
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert("Lucky Learn failed. Please try again.");
+            luckyBtn.disabled = false;
+            luckyBtn.innerHTML = '<span id="txt-lucky">' + originalText + '</span>';
+        }
+    }
+
+    function getRandomBloomsLevel() {
+      const bloomsLevels = [
+        "Knowledge (Remembering)", 
+        "Comprehension (Understanding)", 
+        "Application (Using)", 
+        "Analysis (Breaking Down)", 
+        "Synthesis (Creating)", 
+        "Evaluation (Judging)"
+      ];
+      const randomIndex = Math.floor(Math.random() * bloomsLevels.length);
+      return bloomsLevels[randomIndex];
+    }
+
+    async function initAI() {
+        return new Promise((resolve, reject) => {
+            google.script.run
+            .withSuccessHandler((key) => {
+                ai = new GoogleGenAI({ apiKey: key });
+                resolve();
+            })
+            .withFailureHandler((err) => {
+                alert("Error getting API Key: " + err);
+                reject(err);
+            })
+            .getApiKey();
+        });
+    }
+
+    async function processRequest(isExploratoryMode = false) {
+        const btn = document.getElementById('submitBtn');
+        const textInput = document.getElementById('userText').value;
+        const age = document.getElementById('studentAge').value;
+        const chatContainer = document.getElementById('chatContainer');
+        const welcomeState = document.getElementById('welcomeState');
+
+        if(!textInput && !selectedImageBase64) {
+            alert("Please provide text or an image.");
+            return;
+        }
+
+        if(welcomeState) welcomeState.style.display = 'none';
+        btn.disabled = true;
+        btn.innerHTML = '<div class="loader" style="width:16px; height:16px; border-width:2px;"></div> Thinking...';
+
+        // --- 1. PREPARE UI (REVERSE ORDER) ---
+        // Create a wrapper for this interaction
+        const conversationBlock = document.createElement('div');
+        conversationBlock.className = 'conversation-block';
+
+        // Create User Div
+        const userDiv = document.createElement('div');
+        userDiv.className = 'card user-request';
+        let contentHtml = `<div><strong>Student (${age}y):</strong> ${textInput}</div>`;
+        if(selectedImageBase64) {
+            contentHtml += `<img src="data:${selectedMimeType};base64,${selectedImageBase64}" style="max-width:150px; margin-top:10px; border-radius:8px;">`;
+        }
+        userDiv.innerHTML = contentHtml;
+
+        // Create Teacher Div
+        const responseId = 'resp-' + Date.now();
+        const teacherDiv = document.createElement('div');
+        teacherDiv.className = 'card';
+        teacherDiv.style.marginTop = '15px'; // Separation from user bubble
+        teacherDiv.id = responseId;
+        teacherDiv.innerHTML = `
+            <div class="image-result-container">
+                <div class="loader" id="img-loader-${responseId}"></div>
+                <img id="gen-img-${responseId}" class="generated-image">
+            </div>
+            <div style="margin-top:20px;" class="explanation-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3 class="teacher-header-dynamic" style="margin:0;">${getTrans('teacherHeader')}</h3>
+                    <button id="tts-btn-${responseId}" class="tts-btn" style="display:none" onclick="speakText('${responseId}')">
+                        <span id="tts-icon-${responseId}" class="material-icons-round" style="font-size:16px">volume_up</span> 
+                        <span id="tts-label-${responseId}">${getTrans('btnListen')}</span>
+                    </button>
+                </div>
+
+                <div id="text-loader-${responseId}">
+                    <div class="skeleton-text" style="width:90%"></div>
+                    <div class="skeleton-text" style="width:80%"></div>
+                </div>
+                <div id="text-content-${responseId}"></div>
+                
+                <!-- Continue Button Container -->
+                <div id="continue-container-${responseId}" style="text-align:right; display:none;">
+                    <button class="continue-btn" onclick="continueTopic('${responseId}', '${age}')">
+                        Continue Learning <span class="material-icons-round">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Assemble Block
+        conversationBlock.appendChild(userDiv);
+        conversationBlock.appendChild(teacherDiv);
+
+        // PREPEND to add to TOP
+        chatContainer.prepend(conversationBlock);
+        
+        // Scroll to top to see the new item
+        chatContainer.scrollTop = 0; 
+
+        try {
+            if(!ai) await initAI();
+
+            const langNames = { en: "English", fr: "French", es: "Spanish", pt: "Portuguese", it: "Italian", de: "German" };
+            const targetLanguage = langNames[currentLang] || "English";
+
+            // --- STEP 1: ANALYSIS ---
+            const analysisParts = [];
+            if(textInput) analysisParts.push({ text: `Input: ${textInput}` });
+            if(selectedImageBase64) analysisParts.push({ inlineData: { data: selectedImageBase64, mimeType: selectedMimeType }});
+            
+            analysisParts.push({ 
+                text: `SYSTEM TASK: Analyze the input. Language Context: ${targetLanguage}.
+                1. Identify the core academic topic.
+                2. Create a prompt for an educational illustration.
+                3. Return strictly valid JSON: {"topic": "string", "imagePrompt": "string"}` 
+            });
+
+            const analysisResponse = await ai.models.generateContent({
+                model: "gemini-3-pro-preview",
+                contents: { parts: analysisParts },
+                config: { thinkingConfig: { thinkingLevel: "low" }, responseMimeType: "application/json" }
+            });
+
+            const analysisData = JSON.parse(analysisResponse.text);
+            const topic = analysisData.topic || "General Knowledge";
+            const imagePrompt = analysisData.imagePrompt || "An educational illustration of " + topic;
+
+            // Store topic in dataset for the "Continue" button
+            document.getElementById(responseId).dataset.topic = topic;
+
+            // --- STEP 2: PARALLEL GENERATION ---
+
+            // A. Explanation Generation
+            const explanationPromise = (async () => {
+                const explParts = [];
+                // Re-feed inputs
+                if(textInput) explParts.push({ text: `Question/Subject: ${textInput}` });
+                if(selectedImageBase64) explParts.push({ inlineData: { data: selectedImageBase64, mimeType: selectedMimeType }});
+                
+                // *** PROMPT BRANCHING BASED ON MODE ***
+                let systemInstruction = "";
+                
+                if (isExploratoryMode) {
+                    // LUCKY / EXPLORATORY MODE: Teach the concept
+                    systemInstruction = `SYSTEM PROMPT: You are a teacher. 
+                    The student (${age} years old) wants to learn about the topic: "${topic}".
+                    Language: ${targetLanguage}.
+                    GOAL: Explain this concept clearly and engagingly. 
+                    - Do not treat this as a homework correction.
+                    - Provide an interesting explanation.
+                    - Give a real-world example.
+                    - Use bolding and lists for readability.`;
+                } else {
+                    // STANDARD MODE: Helper for homework
+                    systemInstruction = `SYSTEM PROMPT: You are a teacher helper. 
+                    Student Age: ${age}. Language: ${targetLanguage}.
+                    Topic: ${topic}.
+                    RULES:
+                    1. DO NOT give the direct answer to the exercise.
+                    2. Explain the underlying concept.
+                    3. Guide them to find the solution themselves.`;
+                }
+
+                explParts.push({ text: systemInstruction });
+
+                const explResponse = await ai.models.generateContent({
+                    model: "gemini-3-pro-preview",
+                    contents: { parts: explParts },
+                    config: { thinkingConfig: { thinkingLevel: "high" } }
+                });
+
+                return explResponse.text;
+            })();
+
+            // B. Image Generation 
+            const imagePromise = (async () => {
+                const imgResponse = await ai.models.generateContent({
+                    model: "gemini-3-pro-image-preview",
+                    contents: { parts: [{ text: imagePrompt + ` Output language ${targetLanguage}` }] },
+                    config: { imageConfig: { aspectRatio: "16:9", imageSize: "1K" } }
+                });
+                for (const part of imgResponse.candidates[0].content.parts) {
+                    if (part.inlineData) return part.inlineData.data;
+                }
+                return null;
+            })();
+
+            const [explanationText, generatedImageBase64] = await Promise.all([explanationPromise, imagePromise]);
+
+            // --- RENDER ---
+            document.getElementById(`text-loader-${responseId}`).style.display = 'none';
+            const formattedText = marked.parse(explanationText); 
+            const contentDiv = document.getElementById(`text-content-${responseId}`);
+            contentDiv.innerHTML = formattedText;
+            contentDiv.dataset.rawText = explanationText;
+            
+            document.getElementById(`tts-btn-${responseId}`).style.display = 'inline-flex';
+            
+            // Show Continue Button
+            document.getElementById(`continue-container-${responseId}`).style.display = 'block';
+
+            if (window.MathJax) {
+                MathJax.typesetPromise([contentDiv]).catch(err => console.log(err));
+            }
+
+            // Image Render
+            const imgLoader = document.getElementById(`img-loader-${responseId}`);
+            const genImg = document.getElementById(`gen-img-${responseId}`);
+            if(generatedImageBase64) {
+                imgLoader.style.display = 'none';
+                genImg.src = `data:image/png;base64,${generatedImageBase64}`;
+                genImg.style.display = 'block';
+            } else {
+                imgLoader.style.display = 'none';
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Error: " + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-icons-round">send</span> <span id="txt-submit">Ask Teacher</span>';
+            resetForm(); // Auto clear form after submission
+        }
+    }
+
+
+    async function continueTopic(responseId, age) {
+        const continueContainer = document.getElementById(`continue-container-${responseId}`);
+        const btn = continueContainer.querySelector('button');
+        const teacherDiv = document.getElementById(responseId);
+        
+        // Get Context
+        const topic = teacherDiv.dataset.topic;
+        const previousExplanation = document.getElementById(`text-content-${responseId}`).dataset.rawText;
+        
+        // UI Loading
+        btn.disabled = true;
+        btn.innerHTML = '<div class="loader" style="width:12px; height:12px; border-width:2px;"></div> Generating...';
+
+        try {
+            const langNames = { en: "English", fr: "French", es: "Spanish", pt: "Portuguese", it: "Italian", de: "German" };
+            const targetLanguage = langNames[currentLang] || "English";
+
+            // Prompt to generate next step
+            const prompt = `SYSTEM: You are a pedagogical expert.
+            Student Age: ${age}. Language: ${targetLanguage}.
+            Current Topic: ${topic}.
+            Previous Context: ${previousExplanation.substring(0, 500)}...
+
+            TASK: Generate ONE single follow-up question that helps the student dive deeper into this topic or explore a related sub-topic.
+            The question should be phrased as if the student is asking it (e.g., "But what happens if...", "How is this related to...").
+            
+            RETURN STRICT JSON: { "question": "string" }`;
+
+            const response = await ai.models.generateContent({
+                model: "gemini-3-pro-preview",
+                contents: { parts: [{ text: prompt }] },
+                config: { 
+                    thinkingConfig: { thinkingLevel: "low" },
+                    responseMimeType: "application/json"
+                }
+            });
+
+            const json = JSON.parse(response.text);
+            const nextQuestion = json.question;
+
+            // Populate input
+            document.getElementById('userText').value = nextQuestion;
+            
+            // Auto submit as an Exploratory/Lucky request (since it's for learning, not homework)
+            processRequest(true);
+
+        } catch (e) {
+            console.error(e);
+            alert("Could not generate follow-up.");
+            btn.disabled = false;
+            btn.innerHTML = 'Continue Learning <span class="material-icons-round">arrow_forward</span>';
+        }
+    }
+
+    // Make reset globally available
+    
+
+    function resetForm() {
+        document.getElementById('userText').value = '';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('imagePreview').src = '';
+        
+        selectedImageBase64 = null;
+        selectedMimeType = null;
+    }
+
+    function speakText(containerId) {
+        const btnIcon = document.getElementById(`tts-icon-${containerId}`);
+        const btnLabel = document.getElementById(`tts-label-${containerId}`);
+        
+        // 1. Check if we are currently speaking
+        if (window.speechSynthesis.speaking) {
+            // STOP functionality
+            window.speechSynthesis.cancel();
+            
+            // Reset UI to "Play" state
+            btnIcon.innerText = 'volume_up';
+            btnLabel.innerText = 'Listen';
+            return; 
+        }
+
+        // 2. Start Speaking
+        const textDiv = document.getElementById(`text-content-${containerId}`);
+        // We use the raw dataset text to avoid reading HTML tags, or clean innerText
+        const textToRead = textDiv.innerText; 
+
+        const utterance = new SpeechSynthesisUtterance(textToRead);
+        utterance.lang = navigator.language || 'en-US';
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // Si Mobile = 1.5, Sinon (PC/Bureau) = 2.0
+        utterance.rate = isMobile ? 1.5 : 2.0;
+
+        // Event: When speech starts
+        utterance.onstart = function() {
+            btnIcon.innerText = 'stop';
+            btnLabel.innerText = 'Stop';
+        };
+
+        // Event: When speech ends naturally
+        utterance.onend = function() {
+            btnIcon.innerText = 'volume_up';
+            btnLabel.innerText = 'Listen';
+        };
+
+        // Event: Error handling
+        utterance.onerror = function() {
+            btnIcon.innerText = 'volume_up';
+            btnLabel.innerText = 'Listen';
+        };
+
+        window.speechSynthesis.speak(utterance);
+    }
+</script>
+
+</body>
+</html>
