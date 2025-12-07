@@ -1,0 +1,117 @@
+<script>
+  const TRANSLATIONS = {
+    en: {
+      title: "Student Helper",
+      lblAge: "Student Age (6-20)",
+      lblAsk: "Ask for Help",
+      phText: "I don't understand how gravity works...",
+      btnPhoto: "Add Photo",
+      btnSubmit: "Ask Teacher",
+      welcome: "Select your age and ask a question to start learning!",
+      teacherHeader: "Teacher's Help",
+      btnListen: "Listen",
+      btnStop: "Stop",
+      topicUnknown: "General Knowledge",
+      btnLucky: "Lucky Learn 🍀",
+    },
+    fr: {
+      title: "Assistant Élève",
+      lblAge: "Âge de l'élève (6-20)",
+      lblAsk: "Demander de l'aide",
+      phText: "Je ne comprends pas la gravité...",
+      btnPhoto: "Ajouter une photo",
+      btnSubmit: "Demander au Prof",
+      welcome: "Sélectionne ton âge et pose une question !",
+      teacherHeader: "Aide du Professeur",
+      btnListen: "Écouter",
+      btnStop: "Arrêter",
+      topicUnknown: "Connaissance Générale",
+      btnLucky: "Lucky Learn 🍀",
+    },
+    es: {
+      title: "Ayudante Estudiantil",
+      lblAge: "Edad del estudiante (6-20)",
+      lblAsk: "Pedir ayuda",
+      phText: "No entiendo cómo funciona la gravedad...",
+      btnPhoto: "Añadir Foto",
+      btnSubmit: "Preguntar",
+      welcome: "¡Selecciona tu edad y haz una pregunta para empezar!",
+      teacherHeader: "Ayuda del Profesor",
+      btnListen: "Escuchar",
+      btnStop: "Parar",
+      topicUnknown: "Conocimiento General",
+      btnLucky: "Lucky Learn 🍀",
+    },
+    pt: {
+      title: "Auxiliar de Aluno",
+      lblAge: "Idade do aluno (6-20)",
+      lblAsk: "Pedir ajuda",
+      phText: "Não entendo como funciona a gravidade...",
+      btnPhoto: "Adicionar Foto",
+      btnSubmit: "Perguntar",
+      welcome: "Selecione sua idade e faça uma pergunta para começar!",
+      teacherHeader: "Ajuda do Professor",
+      btnListen: "Ouvir",
+      btnStop: "Parar",
+      topicUnknown: "Conhecimentos Gerais",
+      btnLucky: "Lucky Learn 🍀",
+    },
+    it: {
+      title: "Assistente Studente",
+      lblAge: "Età dello studente (6-20)",
+      lblAsk: "Chiedi aiuto",
+      phText: "Non capisco come funziona la gravità...",
+      btnPhoto: "Aggiungi Foto",
+      btnSubmit: "Chiedi al Prof",
+      welcome: "Seleziona la tua età e fai una domanda!",
+      teacherHeader: "Aiuto dell'Insegnante",
+      btnListen: "Ascolta",
+      btnStop: "Ferma",
+      topicUnknown: "Conoscenza Generale",
+      btnLucky: "Lucky Learn 🍀",
+    },
+    de: {
+      title: "Schülerhilfe",
+      lblAge: "Schüleralter (6-20)",
+      lblAsk: "Um Hilfe bitten",
+      phText: "Ich verstehe die Schwerkraft nicht...",
+      btnPhoto: "Foto hinzufügen",
+      btnSubmit: "Lehrer fragen",
+      welcome: "Wähle dein Alter und stelle eine Frage!",
+      teacherHeader: "Lehrerhilfe",
+      btnListen: "Anhören",
+      btnStop: "Stopp",
+      topicUnknown: "Allgemeinwissen",
+      btnLucky: "Lucky Learn 🍀",
+    }
+  };
+
+  let currentLang = 'en';
+
+  function changeAppLanguage(langCode) {
+    currentLang = langCode;
+    const t = TRANSLATIONS[langCode];
+    
+    // Update Text Content
+    document.getElementById('app-title').innerText = t.title;
+    document.getElementById('lbl-age').innerText = t.lblAge;
+    document.getElementById('lbl-ask').innerText = t.lblAsk;
+    document.getElementById('txt-photo').innerText = t.btnPhoto;
+    document.getElementById('txt-submit').innerText = t.btnSubmit;
+    
+    // Update Placeholders
+    document.getElementById('userText').placeholder = t.phText;
+    
+    // Update Welcome Message if visible
+    const welcomeH2 = document.querySelector('#welcomeState h2');
+    if(welcomeH2) welcomeH2.innerText = t.welcome;
+
+    // Update dynamic elements currently in DOM (like existing headers)
+    document.querySelectorAll('.teacher-header-dynamic').forEach(el => el.innerText = t.teacherHeader);
+  }
+
+  // Helper to get text for dynamic generation
+  function getTrans(key) {
+    return TRANSLATIONS[currentLang][key] || TRANSLATIONS['en'][key];
+  }
+</script>
