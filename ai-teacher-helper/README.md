@@ -8,7 +8,30 @@
 > **A personalized, multimodal AI Tutor built with Google Apps Script, Gemini 3, and Nano Banana Pro.**  
 > *Built for the Google AI Sprint.*
 
-**AI Teacher Helper** is a web application designed to help students understand concepts rather than just giving them the answers. It leverages the new **Gemini 3 Thinking Modes** to balance pedagogical quality with cost efficiency, acting as a virtual tutor that adapts to the student's age and language.
+---
+
+## 📺 Watch the Demo
+
+Check out the full walkthrough of the application in action:
+
+<div align="center">
+  <a href="https://youtu.be/bQYy5hLeugo">
+    <img src="https://img.youtube.com/vi/bQYy5hLeugo/maxresdefault.jpg" alt="Watch the Demo" style="width:50%;">
+  </a>
+</div>
+
+[![Watch the Demo](https://img.shields.io/badge/▶_Watch_Full_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)]([LINK_HERE](https://youtu.be/bQYy5hLeugo))
+
+*(Click the button above to view the video)*
+
+---
+
+## 📖 Read the Story
+
+Want to know how it was built? Read the deep dive into the architecture, cost optimization, and prompt engineering on Medium:
+
+[**Building a Personalized AI Tutor with Gemini 3, Nano Banana Pro, and Google Apps Script**](https://medium.com/@stephane.giron/building-a-personalized-ai-tutor-with-gemini-3-nano-banana-pro-and-google-apps-script-4a35e917c6b7?postPublishedType=initial)
+
 
 ---
 
@@ -142,7 +165,3 @@ Contributions are welcome! If you have ideas for new features (e.g., PDF export,
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-*This project was created by [Your Name] for the Google Developer Experts AI Sprint.*
