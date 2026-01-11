@@ -22,32 +22,86 @@ function runPdfMergeTest() {
 
 /**
  * Extracts specific pages from a PDF using Gemini Code Execution.
+ * It sends the PDF to Gemini, executes Python to split it, and saves the result.
+ * 
  * @param {string} fileId The ID of the PDF file on Google Drive.
  */
 function extractPdfPagesWithCodeExecution(fileId) {
+  // 1. PREPARE FILE AND METADATA
+  // Get the original file to define the new filename
   const originalFile = DriveApp.getFileById(fileId);
-  const originalName = originalFile.getName().replace(/\.[^/.]+$/, "");
+  const originalName = originalFile.getName().replace(/\.[^/.]+$/, ""); // Remove extension
   const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HH-mm");
   
+  // Convert the file to Base64 to send it to the API
   const blob = originalFile.getBlob();
   const base64Data = Utilities.base64Encode(blob.getBytes());
 
+  // 2. CONSTRUCT THE API REQUEST
+  // We explicitly ask Gemini to generate a new PDF file for pages 1 and 2
   const contents = [{
     parts: [
-      { "text": "Job : Create new PDF. Task : Export page 1 to 2." },
-      { "inline_data": { "mime_type": "application/pdf", "data": base64Data } }
+      { 
+        "text": "Job : Create new PDF. Task : Export page 1 to 2." 
+      },
+      {
+        "inline_data": {
+          "mime_type": "application/pdf",
+          "data": base64Data
+        }
+      }
     ]
   }];
 
+  // We must enable the 'code_execution' tool
   const tools = [{ "code_execution": {} }];
+
+  // 3. CALL GEMINI API
   const response = callGeminiApi(contents, tools, "You are a specialized document processor.");
 
-  if (response && response.candidates) {
-    const fileName = `${originalName} - Extracted - ${timestamp}.pdf`;
-    processGeminiResponse(response.candidates[0].content.parts, fileName);
-  } else {
+  if (!response || !response.candidates) {
     console.error("No valid response from API.");
+    return;
   }
+
+  // 4. PROCESS THE RESPONSE
+  // The response will contain multiple parts: the code written, the logs, and the final file.
+  console.log("--- Processing Gemini Response ---");
+  const parts = response.candidates[0].content.parts;
+
+  parts.forEach((part, index) => {
+    
+    // A. Visualizing the Python Code Gemini wrote
+    if (part.executableCode) {
+      console.log(`[Part ${index}] 🐍 Generated Python Code:\n`, part.executableCode.code);
+    } 
+    
+    // B. Visualizing the Output of that Python Code
+    else if (part.codeExecutionResult) {
+      console.log(`[Part ${index}] ⚙️ Code Execution Output:\n`, part.codeExecutionResult.output);
+    } 
+    
+    // C. Handling the Resulting File (The new PDF)
+    else if (part.inlineData) {
+      console.log(`[Part ${index}] 📄 Found generated file data (${part.inlineData.mimeType}). Saving to Drive...`);
+      
+      const newFileName = `${originalName} - Extracted - ${timestamp}.pdf`;
+      
+      // Decode the result and create the file
+      const decodedData = Utilities.base64Decode(part.inlineData.data);
+      const newFileBlob = Utilities.newBlob(decodedData, part.inlineData.mimeType, newFileName);
+      const newFile = DriveApp.createFile(newFileBlob);
+      
+      console.log("✅ File saved successfully!");
+      console.log("File Name: " + newFileName);
+      console.log("File URL: " + newFile.getUrl());
+    } 
+    
+    // D. Handling any text response
+    else if (part.text) {
+      console.log(`[Part ${index}] 🗣️ Text Response:\n`, part.text);
+    }
+  });
 }
 
 /**
