@@ -20,7 +20,35 @@ function runPdfMergeTest() {
   merge2PDFWithCodeExecution(fileId1, fileId2);
 }
 
-processGeminiResponse
+/**
+ * Extracts specific pages from a PDF using Gemini Code Execution.
+ * @param {string} fileId The ID of the PDF file on Google Drive.
+ */
+function extractPdfPagesWithCodeExecution(fileId) {
+  const originalFile = DriveApp.getFileById(fileId);
+  const originalName = originalFile.getName().replace(/\.[^/.]+$/, "");
+  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HH-mm");
+  
+  const blob = originalFile.getBlob();
+  const base64Data = Utilities.base64Encode(blob.getBytes());
+
+  const contents = [{
+    parts: [
+      { "text": "Job : Create new PDF. Task : Export page 1 to 2." },
+      { "inline_data": { "mime_type": "application/pdf", "data": base64Data } }
+    ]
+  }];
+
+  const tools = [{ "code_execution": {} }];
+  const response = callGeminiApi(contents, tools, "You are a specialized document processor.");
+
+  if (response && response.candidates) {
+    const fileName = `${originalName} - Extracted - ${timestamp}.pdf`;
+    processGeminiResponse(response.candidates[0].content.parts, fileName);
+  } else {
+    console.error("No valid response from API.");
+  }
+}
 
 /**
  * Merges two PDF files into one using Gemini Code Execution.
