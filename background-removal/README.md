@@ -72,4 +72,4 @@ This code is open-source. Please check the repository license for specifics.
 
 **Stéphane Giron (St3ph-fr)**
 * [GitHub Profile](https://github.com/St3ph-fr)
-* [Medium Articles](https://medium.com/@stephane.giron) - Check here for tutorials on how this code was built.
+* [Medium Articles]([https://medium.com/@stephane.giron](https://medium.com/@stephane.giron/background-removal-on-the-fly-with-gemini-and-code-execution-48621565fa9f)) - Check here for tutorials on how this code was built.
